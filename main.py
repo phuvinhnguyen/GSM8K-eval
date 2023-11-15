@@ -4,13 +4,13 @@ import os
 import random
 import transformers
 from tqdm import tqdm
-from transformers import (
-    AutoTokenizer,
-    AutoModelForCausalLM,
-)
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
 from utils import download_url, load_jsonl
 import argparse
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+torch.set_default_device(device)
 
 transformers.logging.set_verbosity(40)
 
@@ -261,7 +261,8 @@ def parse_args():
         help="The output directory where the model predictions and checkpoints will be written.",
     )
 
-    parser.add_argument("--load", type=str, default=None, help="load quantized model")
+    parser.add_argument("--load", type=str, default=None,
+                        help="load quantized model")
 
     args = parser.parse_args()
     return args
@@ -284,7 +285,7 @@ def generate(model, tokenizer, input_text, generate_kwargs):
     for i in range(output_ids.shape[0]):
         response.append(
             tokenizer.decode(
-                output_ids[i][input_ids.shape[1] :],
+                output_ids[i][input_ids.shape[1]:],
                 skip_special_tokens=True,
                 ignore_tokenization_space=True,
             )
@@ -310,7 +311,8 @@ def main():
         )
         os.rename(os.path.join(args.data_root, "test.jsonl"), test_filepath)
 
-    list_data_dict = load_jsonl(test_filepath, instruction="question", output="answer")
+    list_data_dict = load_jsonl(
+        test_filepath, instruction="question", output="answer")
 
     model, tokenizer = load(args.model_name_or_path)
 
@@ -324,7 +326,8 @@ def main():
     for sample in tqdm(list_data_dict):
         input_text = build_prompt(sample["instruction"], N_SHOT, COT_FLAG)
         generate_kwargs = dict(max_new_tokens=256, top_p=0.95, temperature=0.8)
-        model_completion = generate(model, tokenizer, input_text, generate_kwargs)
+        model_completion = generate(
+            model, tokenizer, input_text, generate_kwargs)
         model_answer = clean_answer(model_completion)
         is_cor = is_correct(model_answer, sample["output"])
         answers.append(is_cor)
